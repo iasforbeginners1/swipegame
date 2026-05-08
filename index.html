@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gandhi Ji: Truth or Myth?</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4ece1;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 300px;
+            height: 400px;
+            perspective: 1000px;
+        }
+
+        .card {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            user-select: none;
+            cursor: grab;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            border: 5px solid #8b5a2b;
+        }
+
+        .card img {
+            width: 80px;
+            margin-bottom: 15px;
+            pointer-events: none;
+        }
+
+        .instructions {
+            margin-top: 20px;
+            text-align: center;
+            color: #5d4037;
+        }
+
+        .score-board {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #2e7d32;
+        }
+
+        .hint {
+            display: flex;
+            justify-content: space-between;
+            width: 300px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .left-hint { color: #d32f2f; }
+        .right-hint { color: #388e3c; }
+    </style>
+</head>
+<body>
+
+    <div class="score-board">Score: <span id="score">0</span></div>
+
+    <div id="game-container">
+        <!-- Cards will be injected here -->
+    </div>
+
+    <div class="hint">
+        <span class="left-hint">← LEFT (Galat)</span>
+        <span class="right-hint">(Sahi) RIGHT →</span>
+    </div>
+
+    <div class="instructions">
+        <p>Gandhi Ji ke baare mein statement sahi hai ya galat?<br>Swipe karke batao!</p>
+    </div>
+
+    <script>
+        const cardsData = [
+            { text: "Gandhi Ji ka janm Porbandar mein hua tha.", isTrue: true },
+            { text: "Unhone 'Do or Die' ka naara diya tha.", isTrue: true },
+            { text: "Gandhi Ji ne America mein wakaalat ki padhai ki.", isTrue: false }, // London me ki thi
+            { text: "Unka janam 2 October ko hua tha.", isTrue: true },
+            { text: "Gandhi Ji ko 'Mahatma' ki upadhi Subhash Chandra Bose ne di thi.", isTrue: false }, // Tagore ne di thi
+            { text: "Dandi March Namak kanoon todne ke liye tha.", isTrue: true },
+            { text: "Gandhi Ji hamesha suit-boot pehente the.", isTrue: false },
+            { text: "Sabarmati Ashram Gujarat mein hai.", isTrue: true }
+        ];
+
+        const container = document.getElementById('game-container');
+        const scoreEl = document.getElementById('score');
+        let score = 0;
+
+        function createCard(data) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `<img src="https://cdn-icons-png.flaticon.com/512/2151/2151194.png" alt="Gandhi"><p>${data.text}</p>`;
+            
+            let startX = 0;
+            let currentX = 0;
+
+            // Touch & Mouse Events
+            card.addEventListener('mousedown', startDrag);
+            card.addEventListener('touchstart', startDrag);
+
+            function startDrag(e) {
+                startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+                card.style.transition = 'none';
+                card.style.cursor = 'grabbing';
+
+                document.addEventListener('mousemove', moveDrag);
+                document.addEventListener('touchmove', moveDrag);
+                document.addEventListener('mouseup', endDrag);
+                document.addEventListener('touchend', endDrag);
+            }
+
+            function moveDrag(e) {
+                currentX = (e.type === 'touchmove' ? e.touches[0].clientX : e.clientX) - startX;
+                let rotation = currentX / 10;
+                card.style.transform = `translateX(${currentX}px) rotate(${rotation}deg)`;
+                
+                // Color feedback
+                if (currentX > 50) card.style.backgroundColor = '#e8f5e9';
+                else if (currentX < -50) card.style.backgroundColor = '#ffebee';
+                else card.style.backgroundColor = 'white';
+            }
+
+            function endDrag() {
+                card.style.cursor = 'grab';
+                document.removeEventListener('mousemove', moveDrag);
+                document.removeEventListener('touchmove', moveDrag);
+                
+                if (Math.abs(currentX) > 100) {
+                    // Swipe Out
+                    const swipedRight = currentX > 0;
+                    const isCorrect = (swipedRight === data.isTrue);
+                    
+                    if (isCorrect) {
+                        score += 10;
+                        scoreEl.innerText = score;
+                    }
+                    
+                    card.style.transition = 'transform 0.5s ease, opacity 0.5s ease';
+                    card.style.transform = `translateX(${currentX * 5}px) rotate(${currentX / 2}deg)`;
+                    card.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        card.remove();
+                        if (container.children.length === 0) {
+                            alert("Game Over! Aapka score: " + score);
+                            location.reload();
+                        }
+                    }, 300);
+
+                } else {
+                    // Reset position
+                    card.style.transition = 'transform 0.3s ease';
+                    card.style.transform = `translateX(0) rotate(0)`;
+                    card.style.backgroundColor = 'white';
+                }
+            }
+
+            container.prepend(card);
+        }
+
+        // Initialize Cards
+        cardsData.forEach(data => createCard(data));
+
+    </script>
+</body>
+</html>
